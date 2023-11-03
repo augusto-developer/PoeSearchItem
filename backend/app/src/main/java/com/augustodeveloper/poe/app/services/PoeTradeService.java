@@ -19,7 +19,7 @@ public class PoeTradeService {
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
+        System.out.println(response.body());
         JSONObject responseJson = new JSONObject(response.body());
         String id = responseJson.getString("id");
 

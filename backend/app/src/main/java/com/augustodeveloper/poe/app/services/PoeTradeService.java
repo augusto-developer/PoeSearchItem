@@ -24,7 +24,9 @@ public class PoeTradeService {
         String id = responseJson.getString("id");
 
         String searchUrl = "https://pathofexile.com/trade/search/Ancestor/" + id;
-
+        
+        
+        
         return searchUrl;
         
     }

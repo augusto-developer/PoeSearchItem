@@ -13,110 +13,130 @@ import com.augustodeveloper.poe.app.entities.Type;
 import com.augustodeveloper.poe.app.entities.Value;
 import com.augustodeveloper.poe.app.services.PoeTradeService;
 
-
 public class AccessoryExec {
-	   private String[] args;
-	   private JSONObject json;
-	   
-	  
-	   public PoeTradeService poeTradeService;
+	private String[] args;
+	private JSONObject json;
 
-	   public AccessoryExec(String[] args) {
-	       this.args = args;
-	       this.poeTradeService = new PoeTradeService();
-	   }
+	public PoeTradeService poeTradeService;
 
-	   public void run(String input) throws Exception {
-		   	
-		   	String[] lines = input.split("\n");
-		    Type typeFilter = new Type(lines[2], "online");
+	public AccessoryExec(String[] args) {
+		this.args = args;
+		this.poeTradeService = new PoeTradeService();
+	}
 
-		    
-		    String responseBody = poeTradeService.getStats();
+	public void run(String input) throws Exception {
 
-		    JSONObject jsonResponse = new JSONObject(responseBody);
-		    JSONArray results = jsonResponse.getJSONArray("result");
-		    
-		    
-		    JSONArray filters = new JSONArray();
-		    
-		    JSONObject json = new JSONObject();
-		    json.put("query", typeFilter.toJson());
+		String[] lines = input.split("\n");
+		Type typeFilter = new Type(lines[2], "online");
 
-		    JSONObject queryJson = json.getJSONObject("query");
-		    queryJson.put("status", new JSONObject().put("option", "online"));
-		    
- 
-		    
-		    Pattern pattern = Pattern.compile("(\\+\\d+\\.?\\d*%?|\\d+\\.?\\d*%?|\\+\\d+\\.?\\d*)");
-		    Filter filter = new Filter();
+		String responseBody = poeTradeService.getStats();
 
-		    for (String line : lines) {
-		       String cleanedLine = line.replaceAll("[\\d\\.]+", "#");
-		       cleanedLine = addLocalIfNeeded(cleanedLine);
-		       Matcher matcher = pattern.matcher(line);
+		JSONObject jsonResponse = new JSONObject(responseBody);
+		JSONArray results = jsonResponse.getJSONArray("result");
 
-		       for (int i = 0; i < results.length(); i++) {
-		           JSONObject item = results.getJSONObject(i);
+		JSONArray filters = new JSONArray();
 
-		           if (item.getString("label").contains("Explicit")) {
-		               if (item.has("entries")) {
-		                   JSONArray entries = item.getJSONArray("entries");
+		JSONObject json = new JSONObject();
+		json.put("query", typeFilter.toJson());
 
-		                   for (int j = 0; j < entries.length(); j++) {
-		                      JSONObject entry = entries.getJSONObject(j);
+		JSONObject queryJson = json.getJSONObject("query");
+		queryJson.put("status", new JSONObject().put("option", "online"));
 
-		                      if (entry.has("text")) {
-		                          String text = entry.getString("text");
-		                          String cleanedText = text.replaceAll("[\\d\\.]+", "#");
+		Pattern pattern = Pattern.compile("(\\+\\d+\\.?\\d*%?|\\d+\\.?\\d*%?|\\+\\d+\\.?\\d*)");
+		Filter filter = new Filter();
 
-		                          if (cleanedLine.equals(cleanedText)) {
-		                              if (entry.has("id")) {
-		                                  filter.setId(entry.getString("id"));
+		Map<String, String> localNames = generateLocalNamesMap(results);
 
-		                                  while (matcher.find()) {
-		                                     String valueString = matcher.group();
-		                                     double value = Double.parseDouble(valueString.replaceAll("[^\\d.]", ""));
-		                                     filter.setValue(new Value(Math.round(value)));
-		                                  }
+		for (String line : lines) {
+			String cleanedLine = addLocalIfNeeded(line.replaceAll("[\\d\\.]+", "#"), localNames);
 
-		                                  filter.setDisabled(false);
-		                                  filters.put(filter.toJson());
-		                                  System.out.println("ID para " + text + ": " + entry.getString("id"));
-		                              }
-		                          }
-		                      }
-		                   }
-		               }
-		           }
-		       }
-		    }
-		    
-		    
-		    queryJson.put("stats", new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+			Matcher matcher = pattern.matcher(line);
 
-		    this.json = json;
+			for (int i = 0; i < results.length(); i++) {
+				JSONObject item = results.getJSONObject(i);
 
-		    System.out.println(json.toString());
-		   
-	   }
-	   
-	   public String addLocalIfNeeded(String input) {
-		   Map<String, String> localNames = new HashMap<>();
-		   localNames.put("increased Armour and Evasion", "increased Armour and Evasion (Local)");
-		   
-		   for (String name : localNames.keySet()) {
-		       if (input.contains(name)) {
-		           return input.replace(name, localNames.get(name));
-		       }
-		   }
-		   return input;
+				if (item.getString("label").contains("Explicit")) {
+					if (item.has("entries")) {
+						JSONArray entries = item.getJSONArray("entries");
+
+						for (int j = 0; j < entries.length(); j++) {
+							JSONObject entry = entries.getJSONObject(j);
+
+							if (entry.has("text")) {
+								String text = entry.getString("text");
+								String cleanedText = text.replaceAll("[\\d\\.]+", "#");
+
+								if (cleanedLine.equals(cleanedText)) {
+									if (entry.has("id")) {
+										filter.setId(entry.getString("id"));
+
+										while (matcher.find()) {
+											String valueString = matcher.group();
+											double value = Double.parseDouble(valueString.replaceAll("[^\\d.]", ""));
+											filter.setValue(new Value(Math.round(value)));
+										}
+
+										filter.setDisabled(false);
+										filters.put(filter.toJson());
+										System.out.println("ID para " + text + ": " + entry.getString("id"));
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 
+		queryJson.put("stats", new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+
+		this.json = json;
+
+		System.out.println(json.toString());
+
+	}
+
+	public Map<String, String> generateLocalNamesMap(JSONArray results) {
+		Map<String, String> localNames = new HashMap<>();
+
+		for (int i = 0; i < results.length(); i++) {
+			JSONObject item = results.getJSONObject(i);
+
+			if (item.getString("label").contains("Explicit")) {
+				if (item.has("entries")) {
+					JSONArray entries = item.getJSONArray("entries");
+
+					for (int j = 0; j < entries.length(); j++) {
+						JSONObject entry = entries.getJSONObject(j);
+
+						if (entry.has("text")) {
+							String text = entry.getString("text");
+
+							if (text.contains("(Local)")) {
+								String nameWithoutLocal = text.replace("(Local)", "").trim();
+								localNames.put(nameWithoutLocal, text);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return localNames;
+	}
+
+	public String addLocalIfNeeded(String input, Map<String, String> localNames) {
+		for (String name : localNames.keySet()) {
+			if (input.contains(name)) {
+				return input.replace(name, localNames.get(name));
+			}
+		}
+		return input;
+	}
 
 	public JSONObject getJson() {
-        return this.json;
-    }
+		return this.json;
+	}
 
 	public String[] getArgs() {
 		return args;
@@ -129,7 +149,5 @@ public class AccessoryExec {
 	public void setJson(JSONObject json) {
 		this.json = json;
 	}
-	
-	
-}
 
+}

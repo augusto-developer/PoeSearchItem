@@ -58,8 +58,9 @@ public class FrontGUI extends Application{
 
             Optional<String> result = dialog.showAndWait();
             result.ifPresent(name -> {
-                accessoryExec.run(name);
+                
                 try {
+                	accessoryExec.run(name);
                     String searchUrl = service.makeRequest(accessoryExec.getJson().toString());
                     System.out.println(searchUrl);
 

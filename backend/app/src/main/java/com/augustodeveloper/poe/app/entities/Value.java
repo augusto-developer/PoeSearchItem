@@ -1,20 +1,20 @@
 package com.augustodeveloper.poe.app.entities;
 
 public class Value {
-	private int min;
+	private long min;
 	
 	public Value() {}
 
-	public Value(int min) {
+	public Value(long min) {
 		super();
 		this.min = min;
 	}
 
-	public int getMin() {
+	public long getMin() {
 		return min;
 	}
 
-	public void setMin(int min) {
+	public void setMin(long min) {
 		this.min = min;
 	}
 	

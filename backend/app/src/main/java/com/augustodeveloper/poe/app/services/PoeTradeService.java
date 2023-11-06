@@ -1,33 +1,42 @@
 package com.augustodeveloper.poe.app.services;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
+
 
 public class PoeTradeService {
 	
-		public String makeRequest(String jsonString) throws Exception {
-        HttpClient client = HttpClient.newHttpClient();
+	@Autowired
+	public RestTemplate restTemplate;
+	
+	
+	
+	// Request com a API do site para retornar o link de pesquisa
+	public String makeRequest(String jsonString) throws Exception {
+		RestTemplate restTemplate = new RestTemplate();
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		HttpEntity<String> entity = new HttpEntity<>(jsonString, headers);
+		ResponseEntity<String> response = restTemplate.postForEntity("https://www.pathofexile.com/api/trade/search/Ancestor", entity, String.class);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(new URI("https://www.pathofexile.com/api/trade/search/Ancestor"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonString))
-                .build();
+		String responseBody = response.getBody();
+		JSONObject responseJson = new JSONObject(responseBody);
+		String id = responseJson.getString("id");
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        System.out.println(response.body());
-        JSONObject responseJson = new JSONObject(response.body());
-        String id = responseJson.getString("id");
+		String searchUrl = "https://pathofexile.com/trade/search/Ancestor/" + id;
+		return searchUrl;
 
-        String searchUrl = "https://pathofexile.com/trade/search/Ancestor/" + id;
-        
-        
-        
-        return searchUrl;
-        
-    }
+	}
+	
+	public String getStats() {
+		   RestTemplate restTemplate = new RestTemplate();
+	       ResponseEntity<String> response = restTemplate.getForEntity("https://www.pathofexile.com/api/trade/data/stats", String.class);
+	       String result = response.getBody();
+	       return result;
+	   }
 }

@@ -1,5 +1,7 @@
 package com.augustodeveloper.poe.app.exec;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -44,12 +46,14 @@ public class AccessoryExec {
 		    JSONObject queryJson = json.getJSONObject("query");
 		    queryJson.put("status", new JSONObject().put("option", "online"));
 		    
+ 
 		    
 		    Pattern pattern = Pattern.compile("(\\+\\d+\\.?\\d*%?|\\d+\\.?\\d*%?|\\+\\d+\\.?\\d*)");
 		    Filter filter = new Filter();
 
 		    for (String line : lines) {
 		       String cleanedLine = line.replaceAll("[\\d\\.]+", "#");
+		       cleanedLine = addLocalIfNeeded(cleanedLine);
 		       Matcher matcher = pattern.matcher(line);
 
 		       for (int i = 0; i < results.length(); i++) {
@@ -96,6 +100,18 @@ public class AccessoryExec {
 		    System.out.println(json.toString());
 		   
 	   }
+	   
+	   public String addLocalIfNeeded(String input) {
+		   Map<String, String> localNames = new HashMap<>();
+		   localNames.put("increased Armour and Evasion", "increased Armour and Evasion (Local)");
+		   
+		   for (String name : localNames.keySet()) {
+		       if (input.contains(name)) {
+		           return input.replace(name, localNames.get(name));
+		       }
+		   }
+		   return input;
+		}
 
 
 	public JSONObject getJson() {

@@ -14,8 +14,6 @@ public class PoeTradeService {
 	@Autowired
 	public RestTemplate restTemplate;
 	
-	
-	
 	// Request com a API do site para retornar o link de pesquisa
 	public String makeRequest(String jsonString) throws Exception {
 		RestTemplate restTemplate = new RestTemplate();

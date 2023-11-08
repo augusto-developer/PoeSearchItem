@@ -1,97 +1,83 @@
 package com.augustodeveloper.poe.app.gui;
 
-import java.util.Optional;
+import java.util.List;
 
+import com.augustodeveloper.poe.app.entities.itens.Boots;
 import com.augustodeveloper.poe.app.exec.AccessoryExec;
+import com.augustodeveloper.poe.app.services.PoeNinjaService;
 import com.augustodeveloper.poe.app.services.PoeTradeService;
 
 import javafx.application.Application;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar.ButtonData;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-public class FrontGUI extends Application{
-	
-	private PoeTradeService service;
-    private AccessoryExec accessoryExec;
+public class FrontGUI extends Application {
 
-    public static void main(String[] args) {
-        Application.launch(FrontGUI.class, args);
+	private TextField textField;
+    private Button tradeButton;
+    private PoeNinjaService poeNinjaService;
+    private PoeTradeService poeTradeService;
+    private AccessoryExec accessoryExec;
+    private String apiUrlPoeNinja;
+    private String apiUrlPoeTrade;
+    private String storedUrl;
+    
+    private Boots boots;
+    
+    public FrontGUI() {
+        this.boots = new Boots();
     }
     
-    private Label labelResult;
-    
-    @Override
-    public void start(Stage primaryStage) {
-        service = new PoeTradeService();
-        String[] args = null;
-        accessoryExec = new AccessoryExec(args);
+	@Override
+	public void start(Stage primaryStage) {
+		poeNinjaService = new PoeNinjaService();
+        poeTradeService = new PoeTradeService();
+        
+       
+        accessoryExec = new AccessoryExec();
 
-        Button buttonAcessorios = new Button("Accessory");
-        labelResult = new Label();
-        Button buttonCopy = new Button("Copy URL");
+        textField = new TextField();
+        tradeButton = new Button("Trade");
 
-        buttonAcessorios.setOnAction(e -> {
-            TextArea textArea = new TextArea();
-            textArea.setPrefSize(300, 100);
-
-            ButtonType buttonTypeOk = new ButtonType("OK", ButtonData.OK_DONE);
-            Dialog<String> dialog = new Dialog<>();
-            dialog.getDialogPane().getButtonTypes().add(buttonTypeOk);
-            dialog.getDialogPane().setContent(textArea);
-            dialog.setTitle("Input Dialog");
-
-            dialog.setResultConverter(dialogButton -> {
-                if (dialogButton == buttonTypeOk) {
-                    return textArea.getText();
-                }
-                return null;
-            });
-
-            Optional<String> result = dialog.showAndWait();
-            result.ifPresent(name -> {
+        tradeButton.setOnAction(e -> {
+            String url = textField.getText();
+            try {
+                apiUrlPoeNinja = poeNinjaService.handleRequest(url);
+                System.out.println("API URL Ninja: " + apiUrlPoeNinja);
+                apiUrlPoeTrade = poeTradeService.makeRequest(accessoryExec.run());
+                System.out.println("API URL Trade: " + apiUrlPoeTrade);            
+                storedUrl = apiUrlPoeNinja;
                 
-                try {
-                	accessoryExec.run(name);
-                    String searchUrl = service.makeRequest(accessoryExec.getJson().toString());
-                    System.out.println(searchUrl);
-
-                    // Crie um novo Stage para a janela de resultados
-                    Stage resultStage = new Stage();
-                    resultStage.setTitle("Result");
-
-                    labelResult.setText(searchUrl);
-                    buttonCopy.setOnAction(ee -> {
-                        Clipboard clipboard = Clipboard.getSystemClipboard();
-                        ClipboardContent content = new ClipboardContent();
-                        content.putString(labelResult.getText());
-                        clipboard.setContent(content);
-                    });
-
-                    VBox vbox = new VBox(labelResult, buttonCopy);
-                    Scene scene = new Scene(vbox, 400, 400);
-                    resultStage.setScene(scene);
-                    resultStage.show();
-
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            });
+                List<String> bootsInfo = boots.getBootsInfo(storedUrl);
+                System.out.println("Boots Info: " + bootsInfo);
+                
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
         });
+        
+       
+        
+        VBox vbox = new VBox(textField, tradeButton);
+        vbox.setPadding(new Insets(10));
+        vbox.setSpacing(10);
 
-        VBox vbox = new VBox(buttonAcessorios, buttonCopy);
-        Scene scene = new Scene(vbox, 400, 400);
+        Scene scene = new Scene(vbox, 300, 200);
 
-        primaryStage.setTitle("Aplicação");
+        primaryStage.setTitle("FrontGUI");
         primaryStage.setScene(scene);
         primaryStage.show();
+    }
+	
+    public String getStoredUrl() {
+        return storedUrl;
+    }
+
+    public static void main(String[] args) {
+        launch(args);
     }
 }

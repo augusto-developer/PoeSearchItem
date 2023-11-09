@@ -1,8 +1,9 @@
 package com.augustodeveloper.poe.app.gui;
 
 import java.util.List;
+import java.util.Map;
 
-import com.augustodeveloper.poe.app.entities.itens.Boots;
+import com.augustodeveloper.poe.app.entities.itens.Equipment;
 import com.augustodeveloper.poe.app.exec.AccessoryExec;
 import com.augustodeveloper.poe.app.services.PoeNinjaService;
 import com.augustodeveloper.poe.app.services.PoeTradeService;
@@ -26,10 +27,10 @@ public class FrontGUI extends Application {
     private String apiUrlPoeTrade;
     private String storedUrl;
     
-    private Boots boots;
+    private Equipment equipments;
     
     public FrontGUI() {
-        this.boots = new Boots();
+        this.equipments = new Equipment();
     }
     
 	@Override
@@ -52,8 +53,8 @@ public class FrontGUI extends Application {
                 System.out.println("API URL Trade: " + apiUrlPoeTrade);            
                 storedUrl = apiUrlPoeNinja;
                 
-                List<String> bootsInfo = boots.getBootsInfo(storedUrl);
-                System.out.println("Boots Info: " + bootsInfo);
+                Map<String, List<Equipment>> equipmentInfo = equipments.getEquipmentInfo(storedUrl);
+                System.out.println("Equipment Info: " + equipmentInfo);
                 
             } catch (Exception ex) {
                 ex.printStackTrace();

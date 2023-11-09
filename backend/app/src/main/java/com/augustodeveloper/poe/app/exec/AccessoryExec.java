@@ -7,6 +7,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import com.augustodeveloper.poe.app.entities.Filter;
+import com.augustodeveloper.poe.app.entities.Miscellaneous;
 import com.augustodeveloper.poe.app.entities.Type;
 import com.augustodeveloper.poe.app.entities.Value;
 import com.augustodeveloper.poe.app.services.PoeTradeService;
@@ -23,7 +24,10 @@ public class AccessoryExec {
     }
 
 	public String run() throws Exception {
-
+		JSONArray filters = new JSONArray();
+		JSONObject json = new JSONObject();
+		Filter filter = new Filter();
+		Miscellaneous misc = new Miscellaneous();
 		
 		Type typeFilter = new Type("Astral Plate", "online");
 
@@ -32,15 +36,20 @@ public class AccessoryExec {
 		JSONObject jsonResponse = new JSONObject(responseBody);
 		JSONArray results = jsonResponse.getJSONArray("result");
 
-		JSONArray filters = new JSONArray();
-
-		JSONObject json = new JSONObject();
+		
 		json.put("query", typeFilter.toJson());
-
 		JSONObject queryJson = json.getJSONObject("query");
 		queryJson.put("status", new JSONObject().put("option", "online"));
-
-		Filter filter = new Filter();
+		
+		misc.setSynthesised_item(new Value(true));
+		misc.setCorrupted(new Value(true));
+		misc.setDisabled(false);
+		
+		
+		queryJson.put("filters", new JSONObject().put("misc_filters", new JSONObject().put("filters", misc.toJson())));
+		
+		
+		
 		filter.setId("explicit.stat_691932474");
 		filter.setValue(new Value(Math.round(20)));
 		filter.setDisabled(false);

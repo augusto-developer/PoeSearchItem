@@ -1,0 +1,41 @@
+.meuEstilo {
+   -fx-background-color: 
+        linear-gradient(#f2f2f2, #d6d6d6),
+        linear-gradient(#fcfcfc 0%, #d9d9d9 20%, #d6d6d6 100%),
+        linear-gradient(#dddddd 0%, #f6f6f6 50%);
+    -fx-background-radius: 9,8,7;
+    -fx-background-insets: 0,1,2;
+    -fx-text-fill: black;
+    -fx-effect: dropshadow( three-pass-box , rgba(0,0,0,0.6) , 5, 0.0 , 0 , 1 );
+}
+
+
+.meuBotao {
+	 -fx-background-color: 
+        linear-gradient(#f2f2f2, #d6d6d6),
+        linear-gradient(#fcfcfc 0%, #d9d9d9 20%, #d6d6d6 100%),
+        linear-gradient(#dddddd 0%, #f6f6f6 50%);
+    -fx-background-radius: 9,8,7;
+    -fx-background-insets: 0,1,2;
+    -fx-text-fill: black;
+    -fx-effect: dropshadow( three-pass-box , rgba(0,0,0,0.6) , 5, 0.0 , 0 , 1 );
+}
+
+.meuBotao:hover {
+    -fx-background-color: 
+        linear-gradient(#e0e0e0, #c0c0c0),
+        linear-gradient(#f0f0f0 0%, #d0d0d0 20%, #c0c0c0 100%),
+        linear-gradient(#d0d0d0 0%, #f0f0f0 50%);
+}
+
+.meuBotao:pressed {
+    -fx-background-color: 
+        linear-gradient(#d0d0d0, #b0b0b0),
+        linear-gradient(#e0e0e0 0%, #c0c0c0 20%, #b0b0b0 100%),
+        linear-gradient(#c0c0c0 0%, #e0e0e0 50%);
+}
+
+.meuEstilo .list-cell {
+	-fx-background-color: transparent;
+}
+

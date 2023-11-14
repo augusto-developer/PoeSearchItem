@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -20,9 +21,11 @@ public class PoeTradeService {
 	private JSONObject json;
 	private PoeNinjaService equipments;
 	private String apiUrlPoeNinja;
-	private List<String> equipmentTypes = Arrays.asList("BodyArmour", "Amulet", "Boots", "Gloves", "Belt", "Ring",
-			"Ring2", "Offhand", "Helm", "Weapon"); /* outros tipos de equipamento */
+	private List<String> equipmentTypes = Arrays.asList("BodyArmour", "Amulet", "Boots", "Gloves");
+//	, "Amulet", "Boots", "Gloves", "Belt", "Ring",
+//	"Ring2", "Offhand", "Helm", "Weapon"
 	private List<String> tradeLinks = new ArrayList<>();
+	
 
 	public PoeTradeService(String apiUrlPoeNinja) {
 		this.apiUrlPoeNinja = apiUrlPoeNinja;
@@ -30,7 +33,7 @@ public class PoeTradeService {
 		this.equipments = new PoeNinjaService(new PoeNinjaController());
 	}
 
-	public void run() throws Exception {
+	public void run(Consumer<String> linkCallback) throws Exception {
 		PoeTradeController poeTradeController = new PoeTradeController();
 
 		// Resgatar o JSON do PoeNinjaService pra acesso
@@ -42,10 +45,7 @@ public class PoeTradeService {
 
 		Pattern valuePattern = Pattern.compile("[\\d\\.]+");
 
-//		String baseType = equipmentInfoJson.getJSONArray("BodyArmour").getJSONObject(0).getString("baseType");
-
 		JSONArray filters = new JSONArray();
-//		Type typeFilter = new Type(baseType, "online");
 
 		// Acesse a API do PoeTrade
 		String poeTradeAPI = poeTradeController.getStats();
@@ -69,17 +69,19 @@ public class PoeTradeService {
 					JSONObject queryJson = json.getJSONObject("query");
 					queryJson.put("status", new JSONObject().put("option", "online"));
 
+					// Limpe a variável filters
+					filters = new JSONArray();
+
 					if (poeNinjaServiceJson.has("explicitMods")) {
 						JSONArray explicitMods = poeNinjaServiceJson.getJSONArray("explicitMods");
 						// Crie um Map para armazenar os nomes dos IDs e os IDs
 						Map<String, String> idMap = new HashMap<>();
 
-						// ...
-
 						// Gere o mapa de nomes locais
 						Map<String, String> localNames = generateLocalNamesMap(results);
 
 						for (int j = 0; j < explicitMods.length(); j++) {
+
 							String text = explicitMods.getString(j);
 
 							// Substitua os valores numéricos por "#"
@@ -134,13 +136,17 @@ public class PoeTradeService {
 											}
 										}
 									}
+									queryJson.put("stats", new JSONArray()
+											.put(new JSONObject().put("type", "and").put("filters", filters)));
 								}
 							}
+
 						}
 						if (poeNinjaServiceJson.has("implicitMods")) {
 							JSONArray implicitMods = poeNinjaServiceJson.getJSONArray("implicitMods");
 
 							for (int j = 0; j < implicitMods.length(); j++) {
+
 								String text = implicitMods.getString(j);
 
 								// Substitua os valores numéricos por "#"
@@ -196,6 +202,9 @@ public class PoeTradeService {
 									}
 								}
 							}
+							queryJson.put("stats",
+									new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+
 						}
 					}
 					JSONObject miscFilters = new JSONObject();
@@ -203,33 +212,36 @@ public class PoeTradeService {
 					if (poeNinjaServiceJson.has("corrupted")) {
 						String corrupted = poeNinjaServiceJson.getString("corrupted");
 						miscFilters.put("corrupted", new JSONObject().put("option", corrupted.equals("true")));
+						queryJson.put("filters",
+								new JSONObject().put("misc_filters", new JSONObject().put("filters", miscFilters)));
+
 					}
 
 					if (poeNinjaServiceJson.has("synthesised")) {
 						String synthesised = poeNinjaServiceJson.getString("synthesised");
 						miscFilters.put("synthesised_item", new JSONObject().put("option", synthesised.equals("true")));
+						queryJson.put("filters",
+								new JSONObject().put("misc_filters", new JSONObject().put("filters", miscFilters)));
+
 					}
-					
-					queryJson.put("stats", new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
 
-					queryJson.put("filters",new JSONObject().put("misc_filters", new JSONObject().put("filters", miscFilters)));
+		
+					
+					String link = poeTradeController.makeRequest(json.toString());
+		            tradeLinks.add(link);
+		            // Modifique aqui: inclua o nome do equipamento no link
+	                String linkWithEquipmentName = key + " - " + link;
+		          
+	                linkCallback.accept(linkWithEquipmentName);
 
-					tradeLinks.add(poeTradeController.makeRequest(json.toString()));
-					
-					
+					json = new JSONObject();
 				}
 
 			}
+
 		}
 
-		for (String trade : tradeLinks) {
-			System.out.println(trade);
-		}
-
-		
 	}
-	
-	
 
 	public void addFilterIfExists(JSONObject poeNinjaServiceJson, String fieldName, String id) {
 		if (poeNinjaServiceJson.has(fieldName)) {

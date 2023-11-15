@@ -17,7 +17,7 @@ public class PoeTradeController {
 	
 	// Request com a API do site para retornar o link de pesquisa
 	public String makeRequest(String jsonString) throws Exception {
-		Thread.sleep(3000);
+		Thread.sleep(4000);
 		
 		RestTemplate restTemplate = new RestTemplate();
 		HttpHeaders headers = new HttpHeaders();

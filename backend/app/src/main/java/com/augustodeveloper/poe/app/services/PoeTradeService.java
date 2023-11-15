@@ -3,8 +3,10 @@ package com.augustodeveloper.poe.app.services;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -24,8 +26,11 @@ public class PoeTradeService {
 	private List<String> equipmentTypes = Arrays.asList("BodyArmour", "Amulet", "Boots", "Gloves");
 //	, "Amulet", "Boots", "Gloves", "Belt", "Ring",
 //	"Ring2", "Offhand", "Helm", "Weapon"
+	private List<String> equipmentGemsTypes = Arrays.asList("Helm", "BodyArmour", "Gloves", "Boots", "Weapon", "Offhand");
 	private List<String> tradeLinks = new ArrayList<>();
-	
+	private static final String DEFAULT_VALUE = "0";
+	private Map<String, String> gemLinks = new HashMap<>();
+	Map<String, Integer> processedItems = new HashMap<>();
 
 	public PoeTradeService(String apiUrlPoeNinja) {
 		this.apiUrlPoeNinja = apiUrlPoeNinja;
@@ -33,7 +38,7 @@ public class PoeTradeService {
 		this.equipments = new PoeNinjaService(new PoeNinjaController());
 	}
 
-	public void run(Consumer<String> linkCallback) throws Exception {
+	public void equipmentsTrade(Consumer<String> linkCallback) throws Exception {
 		PoeTradeController poeTradeController = new PoeTradeController();
 
 		// Resgatar o JSON do PoeNinjaService pra acesso
@@ -92,8 +97,9 @@ public class PoeTradeService {
 
 							// Extraia o valor da linha
 							Matcher valueMatcher = valuePattern.matcher(text);
-							String value = valueMatcher.find() ? valueMatcher.group() : "0"; // valor padrao caso nao
-																								// ache o valor.
+							String value = valueMatcher.find() ? valueMatcher.group() : DEFAULT_VALUE; // valor padrao
+																										// caso nao
+							// ache o valor.
 
 							for (int k = 0; k < results.length(); k++) {
 								JSONObject item = results.getJSONObject(k);
@@ -225,14 +231,12 @@ public class PoeTradeService {
 
 					}
 
-		
-					
 					String link = poeTradeController.makeRequest(json.toString());
-		            tradeLinks.add(link);
-		            // Modifique aqui: inclua o nome do equipamento no link
-	                String linkWithEquipmentName = key + " - " + link;
-		          
-	                linkCallback.accept(linkWithEquipmentName);
+					tradeLinks.add(link);
+					// Modifique aqui: inclua o nome do equipamento no link
+					String linkWithEquipmentName = key + " - " + link;
+
+					linkCallback.accept(linkWithEquipmentName);
 
 					json = new JSONObject();
 				}
@@ -241,6 +245,116 @@ public class PoeTradeService {
 
 		}
 
+	}
+
+	public void gemTrade(Consumer<String> linkCallback) throws Exception {
+		PoeTradeController poeTradeController = new PoeTradeController();
+		// Resgatar o JSON do PoeNinjaService pra acesso
+		equipments.setApiUrl(apiUrlPoeNinja);
+		Map<String, List<PoeNinjaService>> equipmentInfo = equipments.getEquipmentInfo();
+
+		// Converta o equipamentoInfo para um objeto JSON
+		JSONObject equipmentInfoJson = convertEquipmentInfoToJson(equipmentInfo);
+
+	
+		
+		
+
+		for (String key : equipmentInfoJson.keySet()) {
+			if (equipmentGemsTypes.contains(key)) {
+				JSONArray valueJson = equipmentInfoJson.getJSONArray(key);
+
+				for (int i = 0; i < valueJson.length(); i++) {
+					JSONObject poeNinjaServiceJson = valueJson.getJSONObject(i);
+
+					// Obtenha o array de gemas
+					JSONArray gemArray = poeNinjaServiceJson.getJSONArray("gem");
+
+					// Se o array de gemas estiver vazio, continue para a próxima iteração
+					if (gemArray.length() == 0) {
+						continue;
+					}
+
+					for (int j = 0; j < gemArray.length(); j++) {
+						JSONObject gemJson = gemArray.getJSONObject(j);
+
+						// Crie um novo JSON para cada gema
+						JSONObject json = new JSONObject();
+						String gemName = gemJson.getString("typeLine");
+
+							Type typeFilter = new Type(gemName, "online");
+							json.put("query", typeFilter.toJson());
+
+							JSONObject queryJson = json.getJSONObject("query");
+							queryJson.put("status", new JSONObject().put("option", "online"));
+
+							String typeLine = gemJson.getString("typeLine");
+							
+							// Verifica se o nome da gema já foi processado
+				               if (processedItems.containsKey(gemName)) {
+				                  int count = processedItems.get(gemName);
+				                  gemName += " (" + (count + 1) + ")";
+				                  processedItems.put(gemName, count + 1);
+				               } else {
+				                  processedItems.put(gemName, 1);
+				               }
+
+							String discriminator = "";
+
+							if (typeLine.contains("Divergent")) {
+								typeLine = typeLine.replace("Divergent", "").trim();
+								discriminator = "divergent";
+							} else if (typeLine.contains("Anomalous")) {
+								typeLine = typeLine.replace("Anomalous", "").trim();
+								discriminator = "anomalous";
+							} else if (typeLine.contains("Phantasmal")) {
+								typeLine = typeLine.replace("Phantasmal", "").trim();
+								discriminator = "phantasmal";
+							}
+							queryJson.put("type",
+									new JSONObject().put("option", typeLine).put("discriminator", discriminator));
+							// Adicione os filtros
+							JSONArray filters = new JSONArray();
+							queryJson.put("stats",
+									new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+
+							// Adicione os filtros misc
+							JSONObject miscFilters = new JSONObject();
+							String gemLevel = gemJson.optString("gemLevel", "").replace(" (Max)", "");
+							miscFilters.put("gem_level",
+									new JSONObject().put("min", gemLevel.isEmpty() ? "0" : gemLevel));
+							String quality = gemJson.has("quality")
+									? gemJson.getString("quality").replace("+", "").replace("%", "")
+									: "0";
+							miscFilters.put("quality", new JSONObject().put("min", quality));
+
+							queryJson.put("filters",
+									new JSONObject().put("misc_filters", new JSONObject().put("filters", miscFilters)));
+
+							// Imprime o JSON
+							System.out.println(json.toString());
+							
+							
+							
+							// Verifica se já existe um link para a gema
+				               String link = gemLinks.get(gemName);
+				               if (link == null) {
+				                  // Se não existir um link, faça uma nova solicitação para obter o link
+				                  link = poeTradeController.makeRequest(json.toString());
+				                  gemLinks.put(gemName, link); // Armazene o link no mapa
+				               }
+
+				               String linkWithGemName = gemName + " - " + link;
+				               linkCallback.accept(linkWithGemName);
+
+							System.out.println(link);
+
+							json = new JSONObject();
+						
+					}
+				}
+			}
+		}
 	}
 
 	public void addFilterIfExists(JSONObject poeNinjaServiceJson, String fieldName, String id) {

@@ -23,6 +23,9 @@ public class PoeNinjaController {
 	    URI uri = new URI(url);
 	    String path = uri.getPath();
 	    String[] parts = path.split("/");
+	    if (parts.length < 6) {
+	        throw new ArrayIndexOutOfBoundsException("Você precisa inserir um link de perfil válido");
+	    }
 	    info.put("overview", parts[2]);
 	    info.put("account", parts[4]);
 	    info.put("name", parts[5]);

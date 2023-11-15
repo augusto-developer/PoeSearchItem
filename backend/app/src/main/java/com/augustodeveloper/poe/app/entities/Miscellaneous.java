@@ -6,24 +6,32 @@ public class Miscellaneous {
 
 	private Value synthesised_item;
 	private Value corrupted;
+	private Value quality;
+	private Value gem_level;
 	private boolean disabled;
 	
 
 	public Miscellaneous() {
 	}
 
-	public Miscellaneous(Value corrupted, Value synthesised_item) {
+	public Miscellaneous(Value corrupted, Value synthesised_item, Value quality, Value gem_level) {
 		this.corrupted = corrupted;
 		this.synthesised_item = synthesised_item;
+		this.quality = quality;
+		this.gem_level = gem_level;
 	}
+	
 
-	public JSONObject toJson() {
-		JSONObject json = new JSONObject();
-		json.put("synthesised_item",  new JSONObject().put("option", this.synthesised_item.getOption()));
-		json.put("corrupted",  new JSONObject().put("option", this.corrupted.getOption()));
-
-		return json;
-	}
+	
+	
+//	public JSONObject toJson() {
+//		JSONObject json = new JSONObject();
+//		json.put("synthesised_item",  new JSONObject().put("option", this.synthesised_item.getOption()));
+//		json.put("corrupted",  new JSONObject().put("option", this.corrupted.getOption()));
+//		
+//		
+//		return json;
+//	}
 
 	public Value getSynthesised_item() {
 		return synthesised_item;
@@ -47,6 +55,22 @@ public class Miscellaneous {
 
 	public void setDisabled(boolean disabled) {
 		this.disabled = disabled;
+	}
+
+	public Value getQuality() {
+		return quality;
+	}
+
+	public void setQuality(Value quality) {
+		this.quality = quality;
+	}
+
+	public Value getGem_level() {
+		return gem_level;
+	}
+
+	public void setGem_level(Value gem_level) {
+		this.gem_level = gem_level;
 	}
 
 	

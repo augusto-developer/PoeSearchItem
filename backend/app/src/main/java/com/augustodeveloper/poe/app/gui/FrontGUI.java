@@ -231,7 +231,57 @@ public class FrontGUI extends Application {
 							});
 						});
 					}
+					if (jewelsCheckBox.isSelected()) {
+						poeTradeService.jewelTrade(link -> {
+							Platform.runLater(() -> {
+								String[] linkParts = link.split(" - ");
+								String jewelName = linkParts[0]; // Nome da gema
+								String linkOnly = linkParts.length > 1 ? linkParts[1] : null; // Link de negociação
 
+								Button linkButton = new Button(jewelName);
+								linkButton.setPadding(new Insets(10, 10, 10, 10));
+								linkButton.setPrefWidth(465);
+								linkButton.getStyleClass().add("meuBotao");
+
+								// Crie um ObjectProperty para armazenar o link no botão
+								ObjectProperty<String> linkProperty = new SimpleObjectProperty<>();
+								linkButton.setUserData(linkProperty);
+
+								linkButton.setOnAction(e -> {
+								   try {
+								       Desktop.getDesktop().browse(new URI(linkProperty.get()));
+								   } catch (IOException | URISyntaxException ex) {
+								       ex.printStackTrace();
+								   }
+								});
+
+								// Atualize o ObjectProperty com o link
+								linkProperty.set(linkOnly);
+
+								listView.getItems().add(new HBox(linkButton));
+						        
+								// Atualize o progresso da barra de progresso
+								double progress = listView.getItems().size() / 24.0;
+								loadingProgressBar.setProgress(progress);
+
+								// Crie uma nova Timeline para animar a barra de progresso
+								Timeline timeline = new Timeline();
+								timeline.getKeyFrames().add(new KeyFrame(Duration.millis(1000),
+										new KeyValue(loadingProgressBar.progressProperty(), progress)));
+								timeline.play(); // Inicie a animação
+								if (listView.getItems().size() == 24) {
+									statusLabel.setText("Concluído 🗹");
+									statusLabel.setPadding(new Insets(50, 0, 0, 0));
+									statusLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: green;");
+									statusLabel.setVisible(true);
+									loadingProgressBar.setVisible(false);
+								}
+							});
+						});
+					
+					}
+					
+					
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

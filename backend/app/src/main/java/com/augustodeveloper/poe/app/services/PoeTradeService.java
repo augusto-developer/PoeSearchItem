@@ -207,6 +207,7 @@ public class PoeTradeService {
 											}
 										}
 									}
+								
 								}
 							}
 							queryJson.put("stats",
@@ -371,12 +372,72 @@ public class PoeTradeService {
 												}
 											}
 										}
+										queryJson.put("stats", new JSONArray()
+												.put(new JSONObject().put("type", "and").put("filters", filters)));
 									}
 								}
 							}
 						}
-						queryJson.put("stats",
-								new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+						
+						if (poeNinjaServiceJson.has("implicitMods")) {
+							JSONArray implicitMods = poeNinjaServiceJson.getJSONArray("implicitMods");
+							
+							for (int j = 0; j < implicitMods.length(); j++) {
+
+								String text = implicitMods.getString(j);
+
+								// Substitua os valores numéricos por "#"
+								String cleanedText = text.replaceAll("[\\d\\.]+", "#");
+
+								for (int k = 0; k < results.length(); k++) {
+									JSONObject item = results.getJSONObject(k);
+
+									if (item.getString("label").contains("Implicit")) {
+										if (item.has("entries")) {
+											JSONArray entries = item.getJSONArray("entries");
+
+											for (int l = 0; l < entries.length(); l++) {
+												JSONObject entry = entries.getJSONObject(l);
+
+												if (entry.has("text")) {
+													String entryText = entry.getString("text");
+													String cleanedEntryText = entryText.replaceAll("[\\d\\.]+", "#");
+							
+
+													if (cleanedText.equals(cleanedEntryText)) {
+														if (entry.has("id")) {
+															String id = entry.getString("id");
+
+															// Verifique se o ID já foi adicionado
+															if (!idMap.containsKey(cleanedText)) {
+																// System.out.println("ID para " + cleanedText + ": " +
+																// id);
+
+																// Adicione o nome do ID e o ID ao Map
+																idMap.put(cleanedText, id);
+
+																// Crie um novo objeto JSONObject para o ID e adicione
+																// ao array de filtros
+																JSONObject filter = new JSONObject();
+																filter.put("id", id);
+																filter.put("value", new JSONObject().put("min", "0"));
+																filter.put("disabled", false);
+																filters.put(filter);
+
+															}
+														}
+													}
+												}
+											}
+										}
+									}
+								
+								}
+							}
+							queryJson.put("stats",
+									new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+
+						}
 					
 					
 					}

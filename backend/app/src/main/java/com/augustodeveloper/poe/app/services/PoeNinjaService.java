@@ -305,4 +305,5 @@ public class PoeNinjaService {
 		this.apiUrl = apiUrl;
 	}
 
+	
 }

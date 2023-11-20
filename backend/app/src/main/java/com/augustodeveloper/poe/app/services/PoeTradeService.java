@@ -22,9 +22,8 @@ public class PoeTradeService {
 	private JSONObject equipmentInfoJson;
 	private PoeNinjaService equipments;
 	private String apiUrlPoeNinja;
-	private List<String> equipmentTypes = Arrays.asList("BodyArmour", "Amulet", "Boots", "Gloves");
-//	, "Amulet", "Boots", "Gloves", "Belt", "Ring",
-//	"Ring2", "Offhand", "Helm", "Weapon"
+	private List<String> equipmentTypes = Arrays.asList("Helm", "BodyArmour", "Gloves", "Boots", "Belt", "Ring",
+			"Ring2", "Amulet", "Weapon", "Offhand");
 	private List<String> equipmentGemsTypes = Arrays.asList("Helm", "BodyArmour", "Gloves", "Boots", "Weapon",
 			"Offhand");
 	private List<String> tradeLinks = new ArrayList<>();
@@ -60,9 +59,9 @@ public class PoeTradeService {
 		JSONArray results = jsonResponse.getJSONArray("result");
 
 		// Percorra o objeto JSON
-		for (String key : equipmentInfoJson.keySet()) {
+		for (String key : equipmentTypes) {
 
-			if (equipmentTypes.contains(key)) {
+			if (equipmentInfoJson.has(key)) {
 				JSONArray valueJson = equipmentInfoJson.getJSONArray(key);
 
 				for (int i = 0; i < valueJson.length(); i++) {
@@ -255,7 +254,6 @@ public class PoeTradeService {
 		JSONObject equipmentInfoJson = prepareEquipmentInfoJson();
 
 		Pattern valuePattern = Pattern.compile("[\\d\\.]+");
-		
 
 		JSONArray filters = new JSONArray();
 
@@ -367,6 +365,7 @@ public class PoeTradeService {
 
 		Pattern valuePattern = Pattern.compile("[\\d\\.]+");
 		Pattern patternForbidden = Pattern.compile("Allocates (.*?) if");
+		Pattern patternCluster = Pattern.compile("Added Small Passive Skills grant:(.*?)");
 
 		JSONArray filters = new JSONArray();
 
@@ -399,8 +398,6 @@ public class PoeTradeService {
 					Map<String, String> idMap = new HashMap<>();
 					if (poeNinjaServiceJson.has("explicitMods")) {
 						JSONArray explicitMods = poeNinjaServiceJson.getJSONArray("explicitMods");
-//						// Crie um Map para armazenar os nomes dos IDs e os IDs
-//						Map<String, String> idMap = new HashMap<>();
 
 						for (int j = 0; j < explicitMods.length(); j++) {
 
@@ -412,11 +409,7 @@ public class PoeTradeService {
 							Matcher matcher = patternForbidden.matcher(textProfile);
 							if (matcher.find()) {
 								allocatedName = matcher.group(1);
-								System.out.println("Allocated Name: " + allocatedName);
-
 								cleanedText = textProfile.replaceAll("Allocates(.*?)if", "Allocates # if");
-								System.out.println(cleanedText);
-
 							} else {
 								cleanedText = textProfile.replaceAll("\\d+(\\.\\d+)?", "#");
 							}
@@ -484,21 +477,38 @@ public class PoeTradeService {
 								}
 							}
 						}
-
-						if (poeNinjaServiceJson.has("implicitMods")) {
-							JSONArray implicitMods = poeNinjaServiceJson.getJSONArray("implicitMods");
-
+						if (poeNinjaServiceJson.has("enchantMods")) {
+							JSONArray implicitMods = poeNinjaServiceJson.getJSONArray("enchantMods");
 							for (int j = 0; j < implicitMods.length(); j++) {
-
 								String text = implicitMods.getString(j);
 
-								// Substitua os valores numéricos por "#"
-								String cleanedText = text.replaceAll("[\\d\\.]+", "#");
+								String allocatedName = null;
+								String cleanedText = null;
+								Integer idOpt = null;
+
+								Pattern pattern = Pattern.compile("grant:(.*)", Pattern.DOTALL);
+								Matcher matcher = pattern.matcher(text);
+								if (matcher.find()) {
+									allocatedName = matcher.group(1);
+									allocatedName = allocatedName.replaceAll("Added Small Passive Skills grant:", "");
+									allocatedName = allocatedName.replace("\n ", "\\n");
+									allocatedName = allocatedName.trim();
+									cleanedText = "Added Small Passive Skills grant: #";
+									System.out.println(allocatedName);
+									System.out.println("CT:" + cleanedText);
+
+									idOpt = clusterJewels(cleanedText, allocatedName);
+								} else {
+									cleanedText = text.replaceAll("[\\d\\.]+", "#");
+								}
+
+								Matcher valueMatcher = valuePattern.matcher(text);
+								String value = valueMatcher.find() ? valueMatcher.group() : DEFAULT_VALUE;
 
 								for (int k = 0; k < results.length(); k++) {
 									JSONObject item = results.getJSONObject(k);
 
-									if (item.getString("label").contains("Implicit")) {
+									if (item.getString("label").contains("Enchant")) {
 										if (item.has("entries")) {
 											JSONArray entries = item.getJSONArray("entries");
 
@@ -512,55 +522,123 @@ public class PoeTradeService {
 													if (cleanedText.equals(cleanedEntryText)) {
 														if (entry.has("id")) {
 															String id = entry.getString("id");
+															JSONObject filter = new JSONObject();
+															if (id.equals("enchant.stat_3948993189")) {
+																filter.put("id", id);
+																filter.put("value",
+																		new JSONObject().put("option", idOpt));
 
-															// Verifique se o ID já foi adicionado
-															if (!idMap.containsKey(cleanedText)) {
-																// System.out.println("ID para " + cleanedText + ": " +
+																filter.put("disabled", false);
+																filters.put(filter);
+															} else if (!idMap.containsKey(cleanedText)) {
+																// System.out.println("ID para " + cleanedText + ":
+																// " +
 																// id);
 
 																// Adicione o nome do ID e o ID ao Map
 																idMap.put(cleanedText, id);
 
-																// Crie um novo objeto JSONObject para o ID e adicione
+																// Crie um novo objeto JSONObject para o ID e
+																// adicione
 																// ao array de filtros
-																JSONObject filter = new JSONObject();
+
 																filter.put("id", id);
-																filter.put("value", new JSONObject().put("min", "0"));
+																filter.put("value", new JSONObject().put("min", value)
+																		.put("max", value));
 																filter.put("disabled", false);
 																filters.put(filter);
 
-															}
+															
 														}
 													}
 												}
 											}
 										}
 									}
-
 								}
 							}
-							queryJson.put("stats",
-									new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
-
 						}
+						queryJson.put("stats",
+								new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
 
 					}
-					int idSize = countExplicitModsInPassiveJewels("PassiveJewels");
-					System.out.println(json.toString());
+					if (poeNinjaServiceJson.has("implicitMods")) {
+						JSONArray implicitMods = poeNinjaServiceJson.getJSONArray("implicitMods");
 
-					String link = poeTradeController.makeRequest(json.toString());
-					tradeLinks.add(link);
-					// Modifique aqui: inclua o nome do equipamento no link
-					String linkWithEquipmentName = baseTypeName + " - " + link;
+						for (int j = 0; j < implicitMods.length(); j++) {
 
-					linkAndIdSizeCallback.accept(new LinkAndIdSize(linkWithEquipmentName, idSize));
+							String text = implicitMods.getString(j);
 
-					// System.out.println(equipmentInfoJson);
+							// Substitua os valores numéricos por "#"
+							String cleanedText = text.replaceAll("[\\d\\.]+", "#");
 
-					json = new JSONObject();
+							for (int k = 0; k < results.length(); k++) {
+								JSONObject item = results.getJSONObject(k);
+
+								if (item.getString("label").contains("Implicit")) {
+									if (item.has("entries")) {
+										JSONArray entries = item.getJSONArray("entries");
+
+										for (int l = 0; l < entries.length(); l++) {
+											JSONObject entry = entries.getJSONObject(l);
+
+											if (entry.has("text")) {
+												String entryText = entry.getString("text");
+												String cleanedEntryText = entryText.replaceAll("[\\d\\.]+", "#");
+
+												if (cleanedText.equals(cleanedEntryText)) {
+													if (entry.has("id")) {
+														String id = entry.getString("id");
+
+														// Verifique se o ID já foi adicionado
+														if (!idMap.containsKey(cleanedText)) {
+															// System.out.println("ID para " + cleanedText + ": " +
+															// id);
+
+															// Adicione o nome do ID e o ID ao Map
+															idMap.put(cleanedText, id);
+
+															// Crie um novo objeto JSONObject para o ID e adicione
+															// ao array de filtros
+															JSONObject filter = new JSONObject();
+															filter.put("id", id);
+															filter.put("value", new JSONObject().put("min", "0"));
+															filter.put("disabled", false);
+															filters.put(filter);
+
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+
+							}
+						}
+						queryJson.put("stats",
+								new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+
+					}
+
 				}
+				int idSize = countExplicitModsInPassiveJewels("PassiveJewels");
+				System.out.println(json.toString());
+
+				String link = poeTradeController.makeRequest(json.toString());
+				tradeLinks.add(link);
+				// Modifique aqui: inclua o nome do equipamento no link
+				String linkWithEquipmentName = baseTypeName + " - " + link;
+
+				linkAndIdSizeCallback.accept(new LinkAndIdSize(linkWithEquipmentName, idSize));
+
+				// System.out.println(equipmentInfoJson);
+
+				json = new JSONObject();
 			}
 		}
+	}
+
 	}
 
 	public int countExplicitModsInPassiveJewels(String typeEquipment) {
@@ -588,12 +666,49 @@ public class PoeTradeService {
 		return results;
 	}
 
+	public Integer clusterJewels(String cleanedText, String allocatedName) {
+		// Access API PoeTrade
+		JSONArray results = getAccessApiPoeTrade();
+
+		Integer idOpt = null;
+		for (int k = 0; k < results.length(); k++) {
+			JSONObject item = results.getJSONObject(k);
+
+			if (item.getString("label").contains("Enchant")) {
+				if (item.has("entries")) {
+					JSONArray entries = item.getJSONArray("entries");
+					for (int l = 0; l < entries.length(); l++) {
+						JSONObject entry = entries.getJSONObject(l);
+
+						if (entry.has("text") && entry.has("type") && entry.has("option")) {
+							if (cleanedText.equals(entry.getString("text"))) {
+								JSONObject option = entry.getJSONObject("option");
+								if (option.has("options")) {
+									JSONArray options = option.getJSONArray("options");
+									for (int opt = 0; opt < options.length(); opt++) {
+										JSONObject entryOption = options.getJSONObject(opt);
+										if (entryOption.has("text") && entryOption.has("id")) {
+											String textOpt = entryOption.getString("text");
+											if (textOpt.equals(allocatedName)) {
+												idOpt = entryOption.getInt("id");
+												System.out.println("idOpt:" + idOpt);
+
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return idOpt;
+	}
+
 	public JSONArray forbiddenJewels(String cleanedText, String allocatedName) {
-		PoeTradeController poeTradeController = new PoeTradeController();
-		// Acesse a API do PoeTrade
-		String poeTradeAPI = poeTradeController.getStats();
-		JSONObject jsonResponse = new JSONObject(poeTradeAPI);
-		JSONArray results = jsonResponse.getJSONArray("result");
+		// Access API PoeTrade
+		JSONArray results = getAccessApiPoeTrade();
 
 		JSONArray filters = new JSONArray();
 		Map<String, String> idMap = new HashMap<>();
@@ -643,7 +758,7 @@ public class PoeTradeService {
 		return filters;
 	}
 
-	public void gemTrade(Consumer<String> linkCallback) throws Exception {
+	public void gemTrade(Consumer<LinkAndIdSize> linkAndIdSizeCallback) throws Exception {
 		PoeTradeController poeTradeController = new PoeTradeController();
 		// Resgatar o JSON do PoeNinjaService pra acesso
 		equipments.setApiUrl(apiUrlPoeNinja);
@@ -668,6 +783,7 @@ public class PoeTradeService {
 					}
 
 					for (int j = 0; j < gemArray.length(); j++) {
+
 						JSONObject gemJson = gemArray.getJSONObject(j);
 
 						// Crie um novo JSON para cada gema
@@ -725,6 +841,7 @@ public class PoeTradeService {
 						// Imprime o JSON
 						System.out.println(json.toString());
 
+						int idSize = countGems();
 						// Verifica se já existe um link para a gema
 						String link = gemLinks.get(gemName);
 						if (link == null) {
@@ -734,7 +851,7 @@ public class PoeTradeService {
 						}
 
 						String linkWithGemName = gemName + " - " + link;
-						linkCallback.accept(linkWithGemName);
+						linkAndIdSizeCallback.accept(new LinkAndIdSize(linkWithGemName, idSize));
 
 						// System.out.println(link);
 
@@ -744,6 +861,41 @@ public class PoeTradeService {
 				}
 			}
 		}
+
+	}
+
+	public int countGems() throws Exception {
+		// Resgatar o JSON do PoeNinjaService pra acesso
+		equipments.setApiUrl(apiUrlPoeNinja);
+		Map<String, List<PoeNinjaService>> equipmentInfo = equipments.getEquipmentInfo();
+
+		// Converta o equipamentoInfo para um objeto JSON
+		JSONObject equipmentInfoJson = convertEquipmentInfoToJson(equipmentInfo);
+
+		int gemCount = 0;
+
+		for (String key : equipmentInfoJson.keySet()) {
+			if (equipmentGemsTypes.contains(key)) {
+				JSONArray valueJson = equipmentInfoJson.getJSONArray(key);
+
+				for (int i = 0; i < valueJson.length(); i++) {
+					JSONObject poeNinjaServiceJson = valueJson.getJSONObject(i);
+
+					// Obtenha o array de gemas
+					JSONArray gemArray = poeNinjaServiceJson.getJSONArray("gem");
+
+					// Se o array de gemas estiver vazio, continue para a próxima iteração
+					if (gemArray.length() == 0) {
+						continue;
+					}
+
+					// Incrementa o contador de gemas pelo número de gemas na gemaArray
+					gemCount += gemArray.length();
+				}
+			}
+		}
+
+		return gemCount;
 	}
 
 	public void addFilterIfExists(JSONObject poeNinjaServiceJson, String fieldName, String id) {

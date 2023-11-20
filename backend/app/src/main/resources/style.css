@@ -39,3 +39,6 @@
 	-fx-background-color: transparent;
 }
 
+.meuBotao:disabled {
+   -fx-background-color: gray;
+}

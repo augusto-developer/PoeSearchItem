@@ -491,7 +491,7 @@ public class PoeTradeService {
 								if (matcher.find()) {
 									allocatedName = matcher.group(1);
 									allocatedName = allocatedName.replaceAll("Added Small Passive Skills grant:", "");
-									allocatedName = allocatedName.replace("\n ", "\\n");
+									//allocatedName = allocatedName.replace("\n ", "\\n");
 									allocatedName = allocatedName.trim();
 									cleanedText = "Added Small Passive Skills grant: #";
 									System.out.println(allocatedName);
@@ -546,9 +546,7 @@ public class PoeTradeService {
 																filter.put("value", new JSONObject().put("min", value)
 																		.put("max", value));
 																filter.put("disabled", false);
-																filters.put(filter);
-
-															
+																filters.put(filter);															
 														}
 													}
 												}

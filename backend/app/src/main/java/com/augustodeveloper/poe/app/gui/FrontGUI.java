@@ -4,8 +4,8 @@ import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -32,17 +32,19 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
 public class FrontGUI extends Application {
 
-	private Long value;
 	private TextField textField;
 	private Button tradeButton;
 	private ListView<Node> listView;
@@ -57,8 +59,12 @@ public class FrontGUI extends Application {
 	private CheckBox flasksCheckBox;
 	private CheckBox jewelsCheckBox;
 	private CheckBox gemsCheckBox;
-	private Map<String, Button> buttons = new HashMap<>();
-	private Map<String, String> buttonLinks = new HashMap<>();
+	private ScheduledExecutorService executor;
+	private Duration globalCooldown = Duration.seconds(10);
+	private Timeline globalCooldownTimeline;
+	private List<Button> buttons = new ArrayList<>();
+	private Button clickedButton;
+	private ProgressIndicator progressIndicator;
 
 	private PoeNinjaService equipments;
 
@@ -69,10 +75,14 @@ public class FrontGUI extends Application {
 		this.flasksCheckBox = new CheckBox("Flasks");
 		this.jewelsCheckBox = new CheckBox("Jewels");
 		this.gemsCheckBox = new CheckBox("Gems");
+		this.globalCooldownTimeline = new Timeline();
+		this.progressIndicator = new ProgressIndicator();
 	}
 
 	@Override
 	public void start(Stage primaryStage) {
+		executor = Executors.newSingleThreadScheduledExecutor();
+
 		listView = new ListView<>();
 		listView.getStyleClass().add("meuEstilo");
 
@@ -81,6 +91,8 @@ public class FrontGUI extends Application {
 
 		textField = new TextField();
 		textField.getStyleClass().add("meuEstilo");
+		textField.setPromptText("Insert Profile PoeNinja link!");
+		textField.setAlignment(Pos.CENTER);
 
 		tradeButton = new Button("Trade");
 		tradeButton.getStyleClass().add("meuBotao");
@@ -96,6 +108,14 @@ public class FrontGUI extends Application {
 		statusLabel = new Label();
 		statusLabel.setPadding(new Insets(0, 0, 0, 0));
 		statusLabel.setVisible(false);
+		
+		progressIndicator = new ProgressIndicator();
+		progressIndicator.setPrefSize(25, 25);
+		progressIndicator.setPadding(new Insets(0, 5, 0, 5));
+		progressIndicator.setVisible(false);
+		
+		StackPane stackPane = new StackPane();
+		stackPane.getChildren().addAll(listView, progressIndicator);
 
 		HBox hboxCheckboxes = new HBox(equipmentCheckBox, flasksCheckBox, jewelsCheckBox, gemsCheckBox);
 		hboxCheckboxes.setSpacing(10);
@@ -113,8 +133,9 @@ public class FrontGUI extends Application {
 		BorderPane borderPane = new BorderPane();
 		borderPane.setBottom(loadingProgressBar);
 		borderPane.setCenter(statusLabel);
+		
 
-		VBox vbox = new VBox(textField, gridPane, listView, borderPane);
+		VBox vbox = new VBox(textField, gridPane, stackPane, borderPane);
 		vbox.setPadding(new Insets(10));
 		vbox.setSpacing(5);
 		vbox.getStyleClass().add("meuEstilo");
@@ -125,6 +146,7 @@ public class FrontGUI extends Application {
 		primaryStage.setResizable(false);
 		primaryStage.setTitle("Quickly Trade v1.0 - by: Lopez");
 		primaryStage.setScene(scene);
+		primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/fastbuild32x32.png")));
 		primaryStage.show();
 	}
 
@@ -137,7 +159,6 @@ public class FrontGUI extends Application {
 
 			poeTradeService = new PoeTradeService(apiUrlPoeNinja);
 
-			ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 			executor.schedule(() -> {
 				try {
 					if (equipmentCheckBox.isSelected()) {
@@ -151,22 +172,22 @@ public class FrontGUI extends Application {
 					}
 					if (gemsCheckBox.isSelected()) {
 						poeTradeService.gemTrade(linkAndIdSize -> {
-							Platform.runLater(() -> {								
+							Platform.runLater(() -> {
 								checkBoxConfig(linkAndIdSize.getLink(), Long.valueOf(linkAndIdSize.getIdSize()));
-								
+
 							});
 						});
 					}
 					if (jewelsCheckBox.isSelected()) {
 						poeTradeService.jewelTrade(linkAndIdSize -> {
-							Platform.runLater(() -> {								
+							Platform.runLater(() -> {
 								checkBoxConfig(linkAndIdSize.getLink(), Long.valueOf(linkAndIdSize.getIdSize()));
 							});
 						});
-					}					
+					}
 					if (flasksCheckBox.isSelected()) {
 						poeTradeService.flaskTrade(linkAndIdSize -> {
-							Platform.runLater(() -> {								
+							Platform.runLater(() -> {
 								checkBoxConfig(linkAndIdSize.getLink(), Long.valueOf(linkAndIdSize.getIdSize()));
 							});
 						});
@@ -179,11 +200,12 @@ public class FrontGUI extends Application {
 			Alert alert = new Alert(Alert.AlertType.ERROR);
 			alert.setTitle("Erro");
 			alert.setHeaderText(null);
-			alert.setContentText("Você precisa inserir um link de perfil válido");
+			alert.setContentText("Insert a valid PoeNinja Profile link !");
 			alert.showAndWait();
 			textField.clear();
 		}
-
+		progressIndicator.setVisible(true); // Mostra o ProgressIndicator
+		progressIndicator.setProgress(-1); // Inicia a animação
 	}
 
 	private void setupCheckBoxes(CheckBox... checkboxes) {
@@ -215,12 +237,22 @@ public class FrontGUI extends Application {
 		linkButton.setUserData(linkProperty);
 
 		linkButton.setOnAction(e -> {
+			clickedButton = linkButton;
+			startGlobalCooldown();
 			try {
 				Desktop.getDesktop().browse(new URI(linkProperty.get()));
 			} catch (IOException | URISyntaxException ex) {
 				ex.printStackTrace();
 			}
 		});
+
+		// Inicie o cooldown no botão assim que ele é gerado, exceto para o primeiro
+		// botão
+		if (buttons.size() > 0 && buttons.get(buttons.size() - 1).isDisabled()) {
+			linkButton.setDisable(true);
+		}
+
+		buttons.add(linkButton);
 
 		// Atualize o ObjectProperty com o link
 		linkProperty.set(linkOnly);
@@ -237,12 +269,38 @@ public class FrontGUI extends Application {
 				new KeyFrame(Duration.millis(1000), new KeyValue(loadingProgressBar.progressProperty(), progress)));
 		timeline.play(); // Inicie a animação
 		if (listView.getItems().size() == value) {
-			statusLabel.setText("Concluído 🗹");
+			statusLabel.setText("Done !");
 			statusLabel.setPadding(new Insets(50, 0, 0, 0));
 			statusLabel.setStyle("-fx-font-size: 20px; -fx-text-fill: green;");
 			statusLabel.setVisible(true);
 			loadingProgressBar.setVisible(false);
+
+			progressIndicator.setVisible(false);
+			progressIndicator.setProgress(0);
 		}
+	}
+
+	private void startGlobalCooldown() {
+		// Desabilite o botão que foi clicado e todos os botões que foram gerados após
+		// ele
+		for (Button button : buttons) {
+			button.setDisable(true);
+		}
+
+		// Inicie o cooldown global
+		globalCooldownTimeline = new Timeline(new KeyFrame(globalCooldown, event -> {
+			// Reabilite todos os botões que foram gerados após o botão que foi clicado
+			for (Button button : buttons) {
+				button.setDisable(false);
+
+				// Adicione uma cor de fundo verde ao botão que foi clicado quando ele voltar a
+				// ficar disponível
+				if (button == clickedButton) {
+					button.setStyle("-fx-background-color: #90ee90;");
+				}
+			}
+		}));
+		globalCooldownTimeline.play();
 	}
 
 	public static void main(String[] args) {

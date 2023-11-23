@@ -1,7 +1,5 @@
 package com.augustodeveloper.poe.app.entities;
 
-import org.json.JSONObject;
-
 public class Miscellaneous {
 
 	private Value synthesised_item;
@@ -20,18 +18,6 @@ public class Miscellaneous {
 		this.quality = quality;
 		this.gem_level = gem_level;
 	}
-	
-
-	
-	
-//	public JSONObject toJson() {
-//		JSONObject json = new JSONObject();
-//		json.put("synthesised_item",  new JSONObject().put("option", this.synthesised_item.getOption()));
-//		json.put("corrupted",  new JSONObject().put("option", this.corrupted.getOption()));
-//		
-//		
-//		return json;
-//	}
 
 	public Value getSynthesised_item() {
 		return synthesised_item;

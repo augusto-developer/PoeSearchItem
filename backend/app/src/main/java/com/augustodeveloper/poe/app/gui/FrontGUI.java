@@ -1,11 +1,21 @@
 package com.augustodeveloper.poe.app.gui;
 
 import java.awt.Desktop;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -45,6 +55,7 @@ import javafx.util.Duration;
 
 public class FrontGUI extends Application {
 
+	private String characterName;
 	private TextField textField;
 	private Button tradeButton;
 	private ListView<Node> listView;
@@ -79,7 +90,6 @@ public class FrontGUI extends Application {
 		this.progressIndicator = new ProgressIndicator();
 	}
 
-	@Override
 	public void start(Stage primaryStage) {
 		executor = Executors.newSingleThreadScheduledExecutor();
 
@@ -108,12 +118,12 @@ public class FrontGUI extends Application {
 		statusLabel = new Label();
 		statusLabel.setPadding(new Insets(0, 0, 0, 0));
 		statusLabel.setVisible(false);
-		
+
 		progressIndicator = new ProgressIndicator();
 		progressIndicator.setPrefSize(25, 25);
 		progressIndicator.setPadding(new Insets(0, 5, 0, 5));
 		progressIndicator.setVisible(false);
-		
+
 		StackPane stackPane = new StackPane();
 		stackPane.getChildren().addAll(listView, progressIndicator);
 
@@ -133,7 +143,6 @@ public class FrontGUI extends Application {
 		BorderPane borderPane = new BorderPane();
 		borderPane.setBottom(loadingProgressBar);
 		borderPane.setCenter(statusLabel);
-		
 
 		VBox vbox = new VBox(textField, gridPane, stackPane, borderPane);
 		vbox.setPadding(new Insets(10));
@@ -148,16 +157,50 @@ public class FrontGUI extends Application {
 		primaryStage.setScene(scene);
 		primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/fastbuild32x32.png")));
 		primaryStage.show();
+
 	}
 
 	private void handleButtonClick() {
 		String url = textField.getText();
+		characterName = extractCharacterName(url);
 
 		try {
 			apiUrlPoeNinja = poeNinjaController.handleRequest(url);
 			System.out.println("API URL Ninja: " + apiUrlPoeNinja);
 
 			poeTradeService = new PoeTradeService(apiUrlPoeNinja);
+
+			// Cria um mapa que associa cada checkbox a uma string que representa o tipo de item
+			 Map<CheckBox, String> checkboxMap = new HashMap<>();
+			 checkboxMap.put(equipmentCheckBox, "Equipments:");
+			 checkboxMap.put(flasksCheckBox, "Flasks:");
+			 checkboxMap.put(jewelsCheckBox, "Jewels:");
+			 checkboxMap.put(gemsCheckBox, "Gems:");
+			
+			// Verifica se o arquivo já existe e se contém a lista de cada tipo de item que está sendo gerado
+			 File file = new File(characterName + ".txt");
+			 if (file.exists()) {
+			  try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+			      String line;
+			      while ((line = br.readLine()) != null) {
+			          // Se a linha contém a string que representa o tipo de item, o arquivo já contém a lista desse tipo de item
+			          for (Map.Entry<CheckBox, String> entry : checkboxMap.entrySet()) {
+			              CheckBox checkbox = entry.getKey();
+			              String type = entry.getValue();
+			              if (checkbox.isSelected() && line.contains(type)) {
+			                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
+			                 alert.setTitle("Informação");
+			                 alert.setHeaderText(null);
+			                 alert.setContentText("O arquivo já contém a lista de " + type);
+			                 alert.showAndWait();
+			                 return;
+			              }
+			          }
+			      }
+			  } catch (IOException e) {
+			      e.printStackTrace();
+				}
+			}
 
 			executor.schedule(() -> {
 				try {
@@ -166,7 +209,7 @@ public class FrontGUI extends Application {
 							Platform.runLater(() -> {
 								long valueEquipment = 10L;
 								checkBoxConfig(link, valueEquipment);
-
+								writeLinksToFile(characterName, link, "Equipments");
 							});
 						});
 					}
@@ -174,7 +217,7 @@ public class FrontGUI extends Application {
 						poeTradeService.gemTrade(linkAndIdSize -> {
 							Platform.runLater(() -> {
 								checkBoxConfig(linkAndIdSize.getLink(), Long.valueOf(linkAndIdSize.getIdSize()));
-
+								writeLinksToFile(characterName, linkAndIdSize.getLink(), "Gems");
 							});
 						});
 					}
@@ -182,6 +225,7 @@ public class FrontGUI extends Application {
 						poeTradeService.jewelTrade(linkAndIdSize -> {
 							Platform.runLater(() -> {
 								checkBoxConfig(linkAndIdSize.getLink(), Long.valueOf(linkAndIdSize.getIdSize()));
+								writeLinksToFile(characterName, linkAndIdSize.getLink(), "Jewels");
 							});
 						});
 					}
@@ -189,6 +233,7 @@ public class FrontGUI extends Application {
 						poeTradeService.flaskTrade(linkAndIdSize -> {
 							Platform.runLater(() -> {
 								checkBoxConfig(linkAndIdSize.getLink(), Long.valueOf(linkAndIdSize.getIdSize()));
+								writeLinksToFile(characterName, linkAndIdSize.getLink(), "Flasks");
 							});
 						});
 					}
@@ -204,8 +249,50 @@ public class FrontGUI extends Application {
 			alert.showAndWait();
 			textField.clear();
 		}
+
 		progressIndicator.setVisible(true); // Mostra o ProgressIndicator
 		progressIndicator.setProgress(-1); // Inicia a animação
+	}
+
+	private String extractCharacterName(String url) {
+		String[] parts = url.split("/");
+		String characterName = parts[7].split("\\?")[0];
+		String timeMachine;
+		if(url.contains("&time-machine=")) {
+			timeMachine = parts[7].split("&time-machine=")[1];
+		} else {
+			timeMachine = "";
+		}
+		return characterName + " - " + timeMachine;
+	}
+
+	private void writeLinksToFile(String characterName, String link, String typeEquipment) {
+		try {
+			characterName = URLDecoder.decode(characterName, StandardCharsets.UTF_8.toString());
+			File file = new File(characterName + ".txt");
+			boolean isFirstLink = !file.exists();
+			try (PrintWriter out = new PrintWriter(
+					new OutputStreamWriter(new FileOutputStream(file, true), StandardCharsets.UTF_8))) {
+				if (isFirstLink || !fileContainsType(file, typeEquipment)) {
+					out.println(typeEquipment + ":");
+				}
+				out.println(link);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private boolean fileContainsType(File file, String type) throws IOException {
+		try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+			String line;
+			while ((line = br.readLine()) != null) {
+				if (line.contains(type)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private void setupCheckBoxes(CheckBox... checkboxes) {
@@ -338,4 +425,5 @@ public class FrontGUI extends Application {
 	public PoeNinjaService getEquipments() {
 		return equipments;
 	}
+
 }

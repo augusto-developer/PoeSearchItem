@@ -365,7 +365,7 @@ public class PoeTradeService {
 
 		Pattern valuePattern = Pattern.compile("[\\d\\.]+");
 		Pattern patternForbidden = Pattern.compile("Allocates (.*?) if");
-		Pattern patternCluster = Pattern.compile("Added Small Passive Skills grant:(.*?)");
+		
 
 		JSONArray filters = new JSONArray();
 
@@ -491,7 +491,7 @@ public class PoeTradeService {
 								if (matcher.find()) {
 									allocatedName = matcher.group(1);
 									allocatedName = allocatedName.replaceAll("Added Small Passive Skills grant:", "");
-									//allocatedName = allocatedName.replace("\n ", "\\n");
+									allocatedName = allocatedName.replace("\n ", "\n").trim();
 									allocatedName = allocatedName.trim();
 									cleanedText = "Added Small Passive Skills grant: #";
 									System.out.println(allocatedName);

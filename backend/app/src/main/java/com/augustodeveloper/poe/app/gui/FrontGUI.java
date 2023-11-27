@@ -56,28 +56,27 @@ import javafx.util.Duration;
 public class FrontGUI extends Application {
 
 	private String characterName;
-	private TextField textField;
-	private Button tradeButton;
-	private ListView<Node> listView;
+	private String apiUrlPoeNinja;
+	private String apiUrlPoeTrade;
 	private PoeNinjaController poeNinjaController;
 	private PoeTradeController poeTradeController;
 	private PoeTradeService poeTradeService;
-	private String apiUrlPoeNinja;
-	private String apiUrlPoeTrade;
+	private PoeNinjaService equipments;
+	private ProgressIndicator progressIndicator;
 	private ProgressBar loadingProgressBar;
+	private Button tradeButton;
+	private Button clickedButton;
+	private TextField textField;
+	private ListView<Node> listView;
 	private Label statusLabel;
 	private CheckBox equipmentCheckBox;
 	private CheckBox flasksCheckBox;
 	private CheckBox jewelsCheckBox;
 	private CheckBox gemsCheckBox;
-	private ScheduledExecutorService executor;
 	private Duration globalCooldown = Duration.seconds(10);
 	private Timeline globalCooldownTimeline;
 	private List<Button> buttons = new ArrayList<>();
-	private Button clickedButton;
-	private ProgressIndicator progressIndicator;
-
-	private PoeNinjaService equipments;
+	private ScheduledExecutorService executor;
 
 	public FrontGUI() {
 		this.equipments = new PoeNinjaService(new PoeNinjaController());
@@ -99,30 +98,34 @@ public class FrontGUI extends Application {
 		poeNinjaController = new PoeNinjaController();
 		poeTradeController = new PoeTradeController();
 
-		textField = new TextField();
-		textField.getStyleClass().add("meuEstilo");
-		textField.setPromptText("Insert Profile PoeNinja link!");
-		textField.setAlignment(Pos.CENTER);
+		textField = textField();
+//		textField = new TextField();
+//		textField.getStyleClass().add("meuEstilo");
+//		textField.setPromptText("Insert Profile PoeNinja link!");
+//		textField.setAlignment(Pos.CENTER);
 
-		tradeButton = new Button("Trade");
-		tradeButton.getStyleClass().add("meuBotao");
-		tradeButton.setPrefWidth(100);
+		tradeButton = tradeButton();
+//		tradeButton = new Button("Trade");
+//		tradeButton.getStyleClass().add("meuBotao");
+//		tradeButton.setPrefWidth(100);
+//		tradeButton.setOnAction(e -> handleButtonClick());
 
-		tradeButton.setOnAction(e -> handleButtonClick());
+		// progressBar();
+//		loadingProgressBar = new ProgressBar();
+//		loadingProgressBar.setProgress(0);
+//		loadingProgressBar.setPrefSize(500, 50);
+//		loadingProgressBar.setPadding(new Insets(0, 0, 0, 0));
 
-		loadingProgressBar = new ProgressBar();
-		loadingProgressBar.setProgress(0);
-		loadingProgressBar.setPrefSize(500, 50);
-		loadingProgressBar.setPadding(new Insets(0, 0, 0, 0));
+		statusLabel = statusLabel();
+//		statusLabel = new Label();
+//		statusLabel.setPadding(new Insets(0, 0, 0, 0));
+//		statusLabel.setVisible(false);
 
-		statusLabel = new Label();
-		statusLabel.setPadding(new Insets(0, 0, 0, 0));
-		statusLabel.setVisible(false);
-
-		progressIndicator = new ProgressIndicator();
-		progressIndicator.setPrefSize(25, 25);
-		progressIndicator.setPadding(new Insets(0, 5, 0, 5));
-		progressIndicator.setVisible(false);
+		progressIndicator = progressIndicator();
+//		progressIndicator = new ProgressIndicator();
+//		progressIndicator.setPrefSize(25, 25);
+//		progressIndicator.setPadding(new Insets(0, 5, 0, 5));
+//		progressIndicator.setVisible(false);
 
 		StackPane stackPane = new StackPane();
 		stackPane.getChildren().addAll(listView, progressIndicator);
@@ -136,12 +139,11 @@ public class FrontGUI extends Application {
 
 		GridPane gridPane = new GridPane();
 		gridPane.setHgap(100); // Define o espaçamento horizontal entre as colunas
-
 		gridPane.add(tradeButton, 0, 0); // Adiciona o tradeButton à primeira coluna e primeira linha
 		gridPane.add(hboxCheckboxes, 1, 0); // Adiciona o hboxCheckboxes à segunda coluna e primeira linha
 
 		BorderPane borderPane = new BorderPane();
-		borderPane.setBottom(loadingProgressBar);
+		borderPane.setBottom(progressBar());
 		borderPane.setCenter(statusLabel);
 
 		VBox vbox = new VBox(textField, gridPane, stackPane, borderPane);
@@ -170,40 +172,50 @@ public class FrontGUI extends Application {
 
 			poeTradeService = new PoeTradeService(apiUrlPoeNinja);
 
-			// Cria um mapa que associa cada checkbox a uma string que representa o tipo de item
-			 Map<CheckBox, String> checkboxMap = new HashMap<>();
-			 checkboxMap.put(equipmentCheckBox, "Equipments:");
-			 checkboxMap.put(flasksCheckBox, "Flasks:");
-			 checkboxMap.put(jewelsCheckBox, "Jewels:");
-			 checkboxMap.put(gemsCheckBox, "Gems:");
-			
-			// Verifica se o arquivo já existe e se contém a lista de cada tipo de item que está sendo gerado
-			 File file = new File(characterName + ".txt");
-			 if (file.exists()) {
-			  try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-			      String line;
-			      while ((line = br.readLine()) != null) {
-			          // Se a linha contém a string que representa o tipo de item, o arquivo já contém a lista desse tipo de item
-			          for (Map.Entry<CheckBox, String> entry : checkboxMap.entrySet()) {
-			              CheckBox checkbox = entry.getKey();
-			              String type = entry.getValue();
-			              if (checkbox.isSelected() && line.contains(type)) {
-			                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
-			                 alert.setTitle("Informação");
-			                 alert.setHeaderText(null);
-			                 alert.setContentText("O arquivo já contém a lista de " + type);
-			                 alert.showAndWait();
-			                 return;
-			              }
-			          }
-			      }
-			  } catch (IOException e) {
-			      e.printStackTrace();
+			// Cria um mapa que associa cada checkbox a uma string que representa o tipo de
+			// item
+			Map<CheckBox, String> checkboxMap = new HashMap<>();
+			checkboxMap.put(equipmentCheckBox, "Equipments:");
+			checkboxMap.put(flasksCheckBox, "Flasks:");
+			checkboxMap.put(jewelsCheckBox, "Jewels:");
+			checkboxMap.put(gemsCheckBox, "Gems:");
+
+			// Verifica se o arquivo já existe e se contém a lista de cada tipo de item que
+			// está sendo gerado
+			File file = new File(characterName + ".html");
+			if (!file.exists()) {
+				file.createNewFile(); // Cria o arquivo se ele não existir
+			}
+			if (file.exists()) {
+				try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+					String line;
+					while ((line = br.readLine()) != null) {
+						// Se a linha contém a string que representa o tipo de item, o arquivo já contém
+						// a lista desse tipo de item
+						for (Map.Entry<CheckBox, String> entry : checkboxMap.entrySet()) {
+							CheckBox checkbox = entry.getKey();
+							String type = entry.getValue();
+							if (checkbox.isSelected() && line.contains(type)) {
+								Alert alert = new Alert(Alert.AlertType.INFORMATION);
+								alert.setTitle("Informação");
+								alert.setHeaderText(null);
+								alert.setContentText("O arquivo já contém a lista de " + type);
+								alert.showAndWait();
+								return;
+							}
+						}
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
 			}
 
 			executor.schedule(() -> {
 				try {
+					
+					// Limpa o ListView
+			        Platform.runLater(() -> listView.getItems().clear());
+					
 					if (equipmentCheckBox.isSelected()) {
 						poeTradeService.equipmentsTrade(link -> {
 							Platform.runLater(() -> {
@@ -258,7 +270,7 @@ public class FrontGUI extends Application {
 		String[] parts = url.split("/");
 		String characterName = parts[7].split("\\?")[0];
 		String timeMachine;
-		if(url.contains("&time-machine=")) {
+		if (url.contains("&time-machine=")) {
 			timeMachine = parts[7].split("&time-machine=")[1];
 		} else {
 			timeMachine = "";
@@ -269,14 +281,21 @@ public class FrontGUI extends Application {
 	private void writeLinksToFile(String characterName, String link, String typeEquipment) {
 		try {
 			characterName = URLDecoder.decode(characterName, StandardCharsets.UTF_8.toString());
-			File file = new File(characterName + ".txt");
-			boolean isFirstLink = !file.exists();
+			File file = new File(characterName + ".html");
+			boolean isFirstLink = !file.exists() || !fileContainsType(file, typeEquipment);
 			try (PrintWriter out = new PrintWriter(
 					new OutputStreamWriter(new FileOutputStream(file, true), StandardCharsets.UTF_8))) {
-				if (isFirstLink || !fileContainsType(file, typeEquipment)) {
-					out.println(typeEquipment + ":");
+				if (isFirstLink) {
+					out.println("<h2>" + typeEquipment + ":</h2>");
 				}
-				out.println(link);
+				int index = link.indexOf("https://pathofexile.com");
+				if (index != -1) {
+					String url = link.substring(index);
+					String itemName = link.substring(0, index - 1); // Extrai o nome do item
+					out.println(itemName + " - <a href=\"" + url + "\">" + url + "</a><br>");
+				} else {
+					out.println(link + "<br>");
+				}
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -388,6 +407,50 @@ public class FrontGUI extends Application {
 			}
 		}));
 		globalCooldownTimeline.play();
+	}
+
+	private Button tradeButton() {
+		tradeButton = new Button("Trade");
+		tradeButton.getStyleClass().add("meuBotao");
+		tradeButton.setPrefWidth(100);
+		tradeButton.setOnAction(e -> handleButtonClick());
+
+		return this.tradeButton;
+	}
+
+	private TextField textField() {
+		textField = new TextField();
+		textField.getStyleClass().add("meuEstilo");
+		textField.setPromptText("Insert Profile PoeNinja link!");
+		textField.setAlignment(Pos.CENTER);
+
+		return this.textField;
+	}
+
+	private ProgressIndicator progressIndicator() {
+		progressIndicator = new ProgressIndicator();
+		progressIndicator.setPrefSize(25, 25);
+		progressIndicator.setPadding(new Insets(0, 5, 0, 5));
+		progressIndicator.setVisible(false);
+
+		return this.progressIndicator;
+	}
+
+	private Label statusLabel() {
+		statusLabel = new Label();
+		statusLabel.setPadding(new Insets(0, 0, 0, 0));
+		statusLabel.setVisible(false);
+
+		return this.statusLabel;
+	}
+
+	private Node progressBar() {
+		loadingProgressBar = new ProgressBar();
+		loadingProgressBar.setProgress(0);
+		loadingProgressBar.setPrefSize(500, 50);
+		loadingProgressBar.setPadding(new Insets(0, 0, 0, 0));
+
+		return this.loadingProgressBar;
 	}
 
 	public static void main(String[] args) {

@@ -13,6 +13,4 @@ public class AppApplication {
 		Application.launch(FrontGUI.class, args);
 	}
 
-	
-
 }

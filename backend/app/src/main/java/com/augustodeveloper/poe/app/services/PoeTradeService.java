@@ -31,6 +31,7 @@ public class PoeTradeService {
 	private Map<String, String> gemLinks = new HashMap<>();
 	private Map<String, Integer> processedItems = new HashMap<>();
 	private PoeTradeController poeTradeController;
+	private JSONArray filters;
 
 	public PoeTradeService(String apiUrlPoeNinja) {
 		this.apiUrlPoeNinja = apiUrlPoeNinja;
@@ -51,7 +52,7 @@ public class PoeTradeService {
 
 		Pattern valuePattern = Pattern.compile("[\\d\\.]+");
 
-		JSONArray filters = new JSONArray();
+		filters = new JSONArray();
 
 		// Acesse a API do PoeTrade
 		String poeTradeAPI = poeTradeController.getStats();
@@ -79,141 +80,31 @@ public class PoeTradeService {
 					filters = new JSONArray();
 
 					if (poeNinjaServiceJson.has("explicitMods")) {
-						JSONArray explicitMods = poeNinjaServiceJson.getJSONArray("explicitMods");
-						// Crie um Map para armazenar os nomes dos IDs e os IDs
-						Map<String, String> idMap = new HashMap<>();
+						String poeNinjaTypeMod = "explicitMods";
+						String labelMod = "Explicit";
+						
+						queryJson = loopMods(poeNinjaServiceJson, results, valuePattern, queryJson, poeNinjaTypeMod, labelMod);
+						queryJson.put("stats",
+								new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
 
-						// Gere o mapa de nomes locais
-						Map<String, String> localNames = generateLocalNamesMap(results);
+					}
+					if (poeNinjaServiceJson.has("enchantMods")) {
+						String poeNinjaTypeMod = "enchantMods";
+						String labelMod = "Enchant";
+						
+						queryJson = loopMods(poeNinjaServiceJson, results, valuePattern, queryJson, poeNinjaTypeMod, labelMod);
+						queryJson.put("stats",
+								new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+					}
 
-						for (int j = 0; j < explicitMods.length(); j++) {
+					if (poeNinjaServiceJson.has("implicitMods")) {
+						String poeNinjaTypeMod = "implicitMods";
+						String labelMod = "Implicit";
+						
+						queryJson = loopMods(poeNinjaServiceJson, results, valuePattern, queryJson, poeNinjaTypeMod, labelMod);
+						queryJson.put("stats",
+								new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
 
-							String text = explicitMods.getString(j);
-
-							// Substitua os valores numéricos por "#"
-							String cleanedText = text.replaceAll("[\\d\\.]+", "#");
-
-							// Adicione "(Local)" ao início do texto se ele contiver "(Local)"
-							cleanedText = addLocalIfNeeded(cleanedText, localNames);
-
-							// Extraia o valor da linha
-							Matcher valueMatcher = valuePattern.matcher(text);
-							String value = valueMatcher.find() ? valueMatcher.group() : DEFAULT_VALUE; // valor padrao
-																										// caso nao
-							// ache o valor.
-
-							for (int k = 0; k < results.length(); k++) {
-								JSONObject item = results.getJSONObject(k);
-
-								if (item.getString("label").contains("Explicit")) {
-									if (item.has("entries")) {
-										JSONArray entries = item.getJSONArray("entries");
-
-										for (int l = 0; l < entries.length(); l++) {
-											JSONObject entry = entries.getJSONObject(l);
-
-											if (entry.has("text")) {
-												String entryText = entry.getString("text");
-												String cleanedEntryText = entryText.replaceAll("[\\d\\.]+", "#");
-
-												// Adicione "(Local)" ao início do entryText se ele contiver "(Local)"
-												cleanedEntryText = addLocalIfNeeded(cleanedEntryText, localNames);
-
-												if (cleanedText.equals(cleanedEntryText)) {
-													if (entry.has("id")) {
-														String id = entry.getString("id");
-
-														// Verifique se o ID já foi adicionado
-														if (!idMap.containsKey(cleanedText)) {
-															// System.out.println("ID para " + cleanedText + ": " + id);
-
-															// Adicione o nome do ID e o ID ao Map
-															idMap.put(cleanedText, id);
-
-															// Crie um novo objeto JSONObject para o ID e adicione ao
-															// array de filtros
-															JSONObject filter = new JSONObject();
-															filter.put("id", id);
-															filter.put("value", new JSONObject().put("min", value));
-															filter.put("disabled", false);
-															filters.put(filter);
-														}
-													}
-												}
-											}
-										}
-									}
-									queryJson.put("stats", new JSONArray()
-											.put(new JSONObject().put("type", "and").put("filters", filters)));
-								}
-							}
-
-						}
-						if (poeNinjaServiceJson.has("implicitMods")) {
-							JSONArray implicitMods = poeNinjaServiceJson.getJSONArray("implicitMods");
-
-							for (int j = 0; j < implicitMods.length(); j++) {
-
-								String text = implicitMods.getString(j);
-
-								// Substitua os valores numéricos por "#"
-								String cleanedText = text.replaceAll("[\\d\\.]+", "#");
-
-								// Adicione "(Local)" ao início do texto se ele contiver "(Local)"
-								cleanedText = addLocalIfNeeded(cleanedText, localNames);
-
-								for (int k = 0; k < results.length(); k++) {
-									JSONObject item = results.getJSONObject(k);
-
-									if (item.getString("label").contains("Implicit")) {
-										if (item.has("entries")) {
-											JSONArray entries = item.getJSONArray("entries");
-
-											for (int l = 0; l < entries.length(); l++) {
-												JSONObject entry = entries.getJSONObject(l);
-
-												if (entry.has("text")) {
-													String entryText = entry.getString("text");
-													String cleanedEntryText = entryText.replaceAll("[\\d\\.]+", "#");
-
-													// Adicione "(Local)" ao início do entryText se ele contiver
-													// "(Local)"
-													cleanedEntryText = addLocalIfNeeded(cleanedEntryText, localNames);
-
-													if (cleanedText.equals(cleanedEntryText)) {
-														if (entry.has("id")) {
-															String id = entry.getString("id");
-
-															// Verifique se o ID já foi adicionado
-															if (!idMap.containsKey(cleanedText)) {
-																// System.out.println("ID para " + cleanedText + ": " +
-																// id);
-
-																// Adicione o nome do ID e o ID ao Map
-																idMap.put(cleanedText, id);
-
-																// Crie um novo objeto JSONObject para o ID e adicione
-																// ao array de filtros
-																JSONObject filter = new JSONObject();
-																filter.put("id", id);
-																filter.put("value", new JSONObject().put("min", 0));
-																filter.put("disabled", false);
-																filters.put(filter);
-
-															}
-														}
-													}
-												}
-											}
-										}
-									}
-
-								}
-							}
-							queryJson.put("stats",
-									new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
-
-						}
 					}
 					JSONObject miscFilters = new JSONObject();
 
@@ -246,6 +137,84 @@ public class PoeTradeService {
 			}
 
 		}
+
+	}
+
+
+	private JSONObject loopMods(JSONObject poeNinjaServiceJson, JSONArray results, Pattern valuePattern,
+			JSONObject queryJson, String poeNinjaTypeMod, String labelMod) {
+		
+		JSONArray typeMods = poeNinjaServiceJson.getJSONArray(poeNinjaTypeMod);
+		// Crie um Map para armazenar os nomes dos IDs e os IDs
+		Map<String, String> idMap = new HashMap<>();
+
+		// Gere o mapa de nomes locais
+		Map<String, String> localNames = generateLocalNamesMap(results);
+
+		for (int j = 0; j < typeMods.length(); j++) {
+
+			String text = typeMods.getString(j);
+
+			// Substitua os valores numéricos por "#"
+			String cleanedText = text.replaceAll("[\\d\\.]+", "#");
+
+			// Adicione "(Local)" ao início do texto se ele contiver "(Local)"
+			cleanedText = addLocalIfNeeded(cleanedText, localNames);
+
+			// Extraia o valor da linha
+			Matcher valueMatcher = valuePattern.matcher(text);
+			String value = valueMatcher.find() ? valueMatcher.group() : DEFAULT_VALUE; // valor padrao
+																						// caso nao
+			// ache o valor.
+
+			for (int k = 0; k < results.length(); k++) {
+				JSONObject item = results.getJSONObject(k);
+
+				if (item.getString("label").contains(labelMod)) {
+					if (item.has("entries")) {
+						JSONArray entries = item.getJSONArray("entries");
+
+						for (int l = 0; l < entries.length(); l++) {
+							JSONObject entry = entries.getJSONObject(l);
+
+							if (entry.has("text")) {
+								String entryText = entry.getString("text");
+								String cleanedEntryText = entryText.replaceAll("[\\d\\.]+", "#");
+
+								// Adicione "(Local)" ao início do entryText se ele contiver "(Local)"
+								cleanedEntryText = addLocalIfNeeded(cleanedEntryText, localNames);
+
+								if (cleanedText.equals(cleanedEntryText)) {
+									if (entry.has("id")) {
+										String id = entry.getString("id");
+
+										// Verifique se o ID já foi adicionado
+										if (!idMap.containsKey(cleanedText)) {
+											// System.out.println("ID para " + cleanedText + ": " + id);
+
+											// Adicione o nome do ID e o ID ao Map
+											idMap.put(cleanedText, id);
+
+											// Crie um novo objeto JSONObject para o ID e adicione ao
+											// array de filtros
+											JSONObject filter = new JSONObject();
+											filter.put("id", id);
+											filter.put("value", new JSONObject().put("min", value));
+											filter.put("disabled", false);
+											filters.put(filter);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			queryJson.put("stats", new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+		}	
+		
+		
+		return queryJson;
 
 	}
 
@@ -286,8 +255,6 @@ public class PoeTradeService {
 					Map<String, String> idMap = new HashMap<>();
 					if (poeNinjaServiceJson.has("explicitMods")) {
 						JSONArray explicitMods = poeNinjaServiceJson.getJSONArray("explicitMods");
-//								// Crie um Map para armazenar os nomes dos IDs e os IDs
-//								Map<String, String> idMap = new HashMap<>();
 
 						for (int j = 0; j < explicitMods.length(); j++) {
 
@@ -340,7 +307,7 @@ public class PoeTradeService {
 						}
 					}
 
-					int idSize = countExplicitModsInPassiveJewels("Flask");
+					int idSize = countExplicitMods("Flask");
 					System.out.println(json.toString());
 
 					String link = poeTradeController.makeRequest(json.toString());
@@ -365,7 +332,6 @@ public class PoeTradeService {
 
 		Pattern valuePattern = Pattern.compile("[\\d\\.]+");
 		Pattern patternForbidden = Pattern.compile("Allocates (.*?) if");
-		
 
 		JSONArray filters = new JSONArray();
 
@@ -546,7 +512,8 @@ public class PoeTradeService {
 																filter.put("value", new JSONObject().put("min", value)
 																		.put("max", value));
 																filter.put("disabled", false);
-																filters.put(filter);															
+																filters.put(filter);
+															}
 														}
 													}
 												}
@@ -555,91 +522,43 @@ public class PoeTradeService {
 									}
 								}
 							}
+							queryJson.put("stats",
+									new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+
 						}
-						queryJson.put("stats",
-								new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+						
+						if (poeNinjaServiceJson.has("implicitMods")) {
+							String poeNinjaTypeMod = "implicitMods";
+							String labelMod = "Implicit";
+							
+							queryJson = loopMods(poeNinjaServiceJson, results, valuePattern, queryJson, poeNinjaTypeMod, labelMod);
+							
+							queryJson.put("stats",
+									new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
+
+						}
 
 					}
-					if (poeNinjaServiceJson.has("implicitMods")) {
-						JSONArray implicitMods = poeNinjaServiceJson.getJSONArray("implicitMods");
+					int idSize = countExplicitMods("PassiveJewels");
+					System.out.println(json.toString());
 
-						for (int j = 0; j < implicitMods.length(); j++) {
+					String link = poeTradeController.makeRequest(json.toString());
+					tradeLinks.add(link);
+					// Modifique aqui: inclua o nome do equipamento no link
+					String linkWithEquipmentName = baseTypeName + " - " + link;
 
-							String text = implicitMods.getString(j);
+					linkAndIdSizeCallback.accept(new LinkAndIdSize(linkWithEquipmentName, idSize));
 
-							// Substitua os valores numéricos por "#"
-							String cleanedText = text.replaceAll("[\\d\\.]+", "#");
+					// System.out.println(equipmentInfoJson);
 
-							for (int k = 0; k < results.length(); k++) {
-								JSONObject item = results.getJSONObject(k);
-
-								if (item.getString("label").contains("Implicit")) {
-									if (item.has("entries")) {
-										JSONArray entries = item.getJSONArray("entries");
-
-										for (int l = 0; l < entries.length(); l++) {
-											JSONObject entry = entries.getJSONObject(l);
-
-											if (entry.has("text")) {
-												String entryText = entry.getString("text");
-												String cleanedEntryText = entryText.replaceAll("[\\d\\.]+", "#");
-
-												if (cleanedText.equals(cleanedEntryText)) {
-													if (entry.has("id")) {
-														String id = entry.getString("id");
-
-														// Verifique se o ID já foi adicionado
-														if (!idMap.containsKey(cleanedText)) {
-															// System.out.println("ID para " + cleanedText + ": " +
-															// id);
-
-															// Adicione o nome do ID e o ID ao Map
-															idMap.put(cleanedText, id);
-
-															// Crie um novo objeto JSONObject para o ID e adicione
-															// ao array de filtros
-															JSONObject filter = new JSONObject();
-															filter.put("id", id);
-															filter.put("value", new JSONObject().put("min", "0"));
-															filter.put("disabled", false);
-															filters.put(filter);
-
-														}
-													}
-												}
-											}
-										}
-									}
-								}
-
-							}
-						}
-						queryJson.put("stats",
-								new JSONArray().put(new JSONObject().put("type", "and").put("filters", filters)));
-
-					}
-
+					json = new JSONObject();
 				}
-				int idSize = countExplicitModsInPassiveJewels("PassiveJewels");
-				System.out.println(json.toString());
-
-				String link = poeTradeController.makeRequest(json.toString());
-				tradeLinks.add(link);
-				// Modifique aqui: inclua o nome do equipamento no link
-				String linkWithEquipmentName = baseTypeName + " - " + link;
-
-				linkAndIdSizeCallback.accept(new LinkAndIdSize(linkWithEquipmentName, idSize));
-
-				// System.out.println(equipmentInfoJson);
-
-				json = new JSONObject();
 			}
 		}
-	}
 
 	}
 
-	public int countExplicitModsInPassiveJewels(String typeEquipment) {
+	public int countExplicitMods(String typeEquipment) {
 		int count = 0;
 		JSONArray infoCount = equipmentInfoJson.getJSONArray(typeEquipment);
 		for (int i = 0; i < infoCount.length(); i++) {

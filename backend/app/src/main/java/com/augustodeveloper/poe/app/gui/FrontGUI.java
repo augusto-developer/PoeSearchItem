@@ -136,7 +136,7 @@ public class FrontGUI extends Application {
 		scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
 
 		primaryStage.setResizable(false);
-		primaryStage.setTitle("Quickly Trade v1.0 - by: Lopez");
+		primaryStage.setTitle("Fast Build v1.0 - by: Lopez");
 		primaryStage.setScene(scene);
 		primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/fastbuild32x32.png")));
 		primaryStage.show();

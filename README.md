@@ -14,4 +14,4 @@
 - Wait a few seconds to click on link to avoid Timeout on website.
 
 
-Discord to Report bugs: https://discord.gg/yPSvqdsgbJ
+
